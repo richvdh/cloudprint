@@ -1,4 +1,4 @@
-import httplib
+import httplib2
 import json
 import urllib
 import urlparse
@@ -39,47 +39,35 @@ class REST:
         type(u'') : UserString.UserString,
     }
 
-    def __init__(self, host, auth=None, debug=False):
-        proto, host = host.split('://')
-        if proto == 'https':
-            self._conn = httplib.HTTPSConnection(host)
+    def __init__(self, host, auth=None, http=None):
+        if http is None:
+            self._conn=httplib2.Http()
         else:
-            self._conn = httplib.HTTPConnection(host)
-        self.debug = debug
-        if debug:
-            self._conn.set_debuglevel(10)
-        else:
-            self._conn.set_debuglevel(0)
-
+            self._conn = http
         self.auth = auth
+        self.host = host
 
     def rest_call(self, verb, path, data, content_type, headers={}, response_type=None):
 
-        data = self.CONTENT_ENCODE[content_type](data)
+        if data is not None:
+            data = self.CONTENT_ENCODE[content_type](data)
 
         headers['Content-Type'] = content_type + '; charset=UTF-8'
         headers['Accept-Charset'] = 'UTF-8'
         if self.auth:
-            headers['Authorization'] = 'GoogleLogin auth=%s' % self.auth
+            headers['Authorization'] = self.auth
 
-        self._conn.request(verb, path, data, headers)
+        uri = self.host+path
+        (resp, data) = self._conn.request(uri,
+                                          method=verb,
+                                          body=data,
+                                          headers=headers)
+        if response_type:
+            content_type = response_type
+        else:
+            content_type = resp['content-type']
+            content_type = content_type.split(';',2)[0]
 
-        try:
-            resp = self._conn.getresponse()
-            if response_type:
-                content_type = response_type
-            else:
-                content_type = resp.getheader('Content-Type')
-        except httplib.BadStatusLine, e:
-            if not e.line:
-                self._conn.close()
-                return self.rest_call(verb, path, data)
-            else:
-                raise
-
-        data = resp.read()
-        if self.debug:
-            print data
         if resp.status != 200:
             try:
                 error = self.CONTENT_DECODE[content_type](data)
@@ -92,11 +80,11 @@ class REST:
             decoded_data = self.RESULT_WRAPTERS[type(decoded_data)](decoded_data)
         except KeyError:
             pass
-        decoded_data.headers = dict(resp.getheaders())
+        decoded_data.headers = dict(resp)
         return decoded_data
 
     def get(self, path, content_type='text/json', headers={}, response_type=None):
-        return self.rest_call('GET', path, '', content_type, headers, response_type)
+        return self.rest_call('GET', path, None, content_type, headers, response_type)
 
     def put(self, path, data, content_type='text/json', headers={}, response_type=None):
         return self.rest_call('PUT', path, data, content_type, headers, response_type)

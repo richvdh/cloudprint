@@ -3,6 +3,7 @@ import ssl
 import socket
 import select
 import time
+import base64
 
 from collections import deque
 from xml.etree.ElementTree import XMLParser, TreeBuilder
@@ -100,15 +101,17 @@ class XmppConnection(object):
         self._write_socket(" ")
 
 
-    def connect(self, host, port, use_ssl, sasl_token):
+    def connect(self, host, port, use_ssl, user_name, oauth_token):
         """Establish a new connection to the XMPP server"""
         # first close any existing socket
         self.close()
 
-        LOGGER.info("Establishing connection to xmpp server %s:%i" % 
+        LOGGER.info("Establishing connection to xmpp server %s:%i" %
                     (host, port))
         self._xmppsock = socket.socket()
         self._wrappedsock = self._xmppsock
+
+        sasl_token=base64.b64encode("\0" + user_name + "\0" + oauth_token)
 
         try:
             if use_ssl:
@@ -120,7 +123,7 @@ class XmppConnection(object):
 
             # https://developers.google.com/cloud-print/docs/rawxmpp
             self._msg('<stream to="gmail.com" version="1.0" xmlns="http://etherx.jabber.org/streams">')
-            self._msg('<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="X-GOOGLE-TOKEN">%s</auth>' % sasl_token)
+            self._msg('<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl"  mechanism="X-OAUTH2" auth:service="oauth2" xmlns:auth="http://www.google.com/talk/protocol/auth">%s</auth>' % sasl_token)
             self._msg('<s:stream to="gmail.com" version="1.0" xmlns:s="http://etherx.jabber.org/streams" xmlns="jabber:client">')
             iq = self._msg('<iq type="set"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><resource>Armooo</resource></bind></iq>')
             bare_jid = iq[0][0].text.split('/')[0]

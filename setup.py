@@ -30,4 +30,8 @@ setup(
             'cloudprint = cloudprint.cloudprint:main',
         ],
     },
+    install_requires = [
+        'oauth2client',
+        'httplib2',
+    ],
 )
