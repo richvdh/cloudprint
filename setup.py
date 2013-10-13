@@ -33,5 +33,8 @@ setup(
     install_requires = [
         'oauth2client',
         'httplib2',
+        # oauth2client imports argparse, but doesn't list it as a
+        # requirement.
+        'argparse',
     ],
 )
