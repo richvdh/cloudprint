@@ -49,6 +49,12 @@ ROOT_LOGGER.setLevel(logging.INFO)
 
 LOGGER = logging.getLogger('cloudprint')
 
+# cloudprint service sends back 403s when our token has expired -
+# we must include that in the list of response codes which prompt
+# a refresh.
+oauth2client.client.REFRESH_STATUS_CODES=[401,403]
+
+
 class CloudPrintProxy(object):
 
     def __init__(self, auth_path):
@@ -109,7 +115,9 @@ class CloudPrintProxy(object):
             return self.http
 
         credentials = self.get_oauth2_credentials()
-
+        #print "OAuth2 creds:"
+        #print "access token: ",credentials.access_token
+        #print "token expiry: ",credentials.token_expiry
         http = httplib2.Http()
         self.http = credentials.authorize(http)
         return self.http
