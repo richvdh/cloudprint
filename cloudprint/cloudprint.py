@@ -123,14 +123,11 @@ class CloudPrintProxy(object):
         return self.http
 
     def get_username(self):
-        if self.username is None:
-            r = self.get_rest('https://www.googleapis.com')
-            json = r.get('/oauth2/v2/userinfo?fields=email')
-            self.username = json["email"]
-        return self.username
+        credentials = self.get_oauth2_credentials()
+        return credentials.id_token["email"]
 
     def check_auth(self):
-        self.get_username()
+        self.get_printers()
 
     def del_saved_auth(self):
         self.oauth2_storage.delete()
